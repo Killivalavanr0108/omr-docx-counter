@@ -3,99 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <title>OMR DOCX K-Level Counter</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      background: #f5f6fa;
-    }
-    h1 {
-      text-align: center;
-      color: #2f3640;
-    }
-    .upload-box {
-      text-align: center;
-      margin: 20px auto;
-      padding: 30px;
-      border: 2px dashed #718093;
-      border-radius: 10px;
-      background: #dcdde1;
-      width: 400px;
-    }
-    input[type="file"] {
-      margin-top: 10px;
-    }
-    #status {
-      text-align: center;
-      margin: 20px;
-      font-weight: bold;
-      color: #192a56;
-    }
-    #results {
-      background: #ffffff;
-      padding: 20px;
-      margin: 20px auto;
-      width: 400px;
-      border-radius: 8px;
-      box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-    }
-    .k-count {
-      margin: 5px 0;
-      font-size: 16px;
-      padding: 5px;
-      border-bottom: 1px solid #f1f2f6;
-    }
-  </style>
-</head>
-<body>
-  <h1>OMR DOCX K-Level Counter</h1>
-
-  <div class="upload-box">
-    <p>Select a <b>.docx</b> file to process:</p>
-    <input type="file" id="fileInput" accept=".docx">
-  </div>
-
-  <div id="status"></div>
-  <div id="results"></div>
-
   <script>
-    document.getElementById("fileInput").addEventListener("change", handleFile);
+  document.getElementById("fileInput").addEventListener("change", handleFile);
 
-    async function handleFile(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+  async function handleFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-      document.getElementById("status").innerText = "⏳ Processing DOCX...";
-      document.getElementById("results").innerHTML = "";
+    document.getElementById("status").innerText = "⏳ Processing DOCX...";
+    document.getElementById("results").innerHTML = "";
 
-      const arrayBuffer = await file.arrayBuffer();
+    const arrayBuffer = await file.arrayBuffer();
 
-      try {
-        // Extract raw text from DOCX using Mammoth
-        let result = await mammoth.extractRawText({ arrayBuffer });
-        let extractedText = result.value;
+    try {
+      // Extract raw text from DOCX
+      let result = await mammoth.extractRawText({ arrayBuffer });
+      let extractedText = result.value;
 
-        let kLevels = { K1: 0, K2: 0, K3: 0, K4: 0, K5: 0, K6: 0 };
+      let kLevels = { K1: 0, K2: 0, K3: 0, K4: 0, K5: 0, K6: 0 };
 
-        // Count occurrences
-        extractedText.split(/\r?\n/).forEach(line => {
-          for (let k in kLevels) {
-            kLevels[k] += (line.match(new RegExp(k, "g")) || []).length;
+      // Split into lines
+      let lines = extractedText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+      // Find rows that contain (o) or (●)
+      lines.forEach(line => {
+        if (line.includes("(o)") || line.includes("●")) {
+          let matches = line.match(/\(●\)/g);
+          if (matches) {
+            // Find which K it belongs to by column order
+            let cols = line.split(/\s+/); // split by spaces
+            cols.forEach((col, idx) => {
+              if (col.includes("●")) {
+                let kName = "K" + (idx + 1);
+                if (kLevels[kName] !== undefined) {
+                  kLevels[kName]++;
+                }
+              }
+            });
           }
-        });
-
-        // Show results
-        let output = "<h3>K-Level Counts:</h3>";
-        for (let k in kLevels) {
-          output += `<div class="k-count">${k}: ${kLevels[k]}</div>`;
         }
-        document.getElementById("results").innerHTML = output;
-        document.getElementById("status").innerText = "✅ Processing complete!";
-      } catch (err) {
-        document.getElementById("status").innerText = "❌ Error: " + err.message;
+      });
+
+      // Display results
+      let output = "<h3>K-Level Counts:</h3>";
+      for (let k in kLevels) {
+        output += `<div class="k-count">${k}: ${kLevels[k]}</div>`;
       }
+      let total = Object.values(kLevels).reduce((a,b)=>a+b,0);
+      output += `<div class="k-count"><b>Total: ${total}</b></div>`;
+
+      document.getElementById("results").innerHTML = output;
+      document.getElementById("status").innerText = "✅ Processing complete!";
+    } catch (err) {
+      document.getElementById("status").innerText = "❌ Error: " + err.message;
     }
-  </script>
+  }
+</script>
 </body>
 </html>
