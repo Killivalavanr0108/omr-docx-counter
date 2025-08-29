@@ -1,24 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>OMR DOCX/PDF K-Level Counter</title>
+  <meta charset="UTF-8" />
+  <title>OMR DOCX/PDF K-Level Counter (Fixed Parser)</title>
   <!-- Mammoth.js for DOCX -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
   <!-- PDF.js for PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script>
+    // PDF.js needs the worker specified when used via CDN
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+    }
+  </script>
   <style>
     body { font-family: Arial, sans-serif; margin: 40px; background: #f5f6fa; }
     h1 { text-align: center; color: #2f3640; }
     .upload-box {
       text-align: center; margin: 20px auto; padding: 30px;
-      border: 2px dashed #718093; border-radius: 10px; background: #dcdde1; width: 400px;
+      border: 2px dashed #718093; border-radius: 10px; background: #dcdde1; width: 460px;
     }
     input[type="file"] { margin-top: 10px; }
     #status { text-align: center; margin: 20px; font-weight: bold; color: #192a56; }
-    #results { background: #ffffff; padding: 20px; margin: 20px auto; width: 400px;
-      border-radius: 8px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
-    .k-count { margin: 5px 0; font-size: 16px; padding: 5px; border-bottom: 1px solid #f1f2f6; }
+    #results {
+      background: #ffffff; padding: 20px; margin: 20px auto; width: 460px;
+      border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,.1);
+    }
+    .k-count { margin: 6px 0; font-size: 16px; padding: 6px; border-bottom: 1px solid #f1f2f6; }
+    .muted { color:#57606a; font-size:12px; }
   </style>
 </head>
 <body>
@@ -39,67 +49,87 @@
       const file = event.target.files[0];
       if (!file) return;
 
-      document.getElementById("status").innerText = "⏳ Processing file...";
-      document.getElementById("results").innerHTML = "";
-
-      let extractedText = "";
+      setStatus("⏳ Processing file...");
+      setResults("");
 
       try {
-        if (file.name.endsWith(".docx")) {
-          // Handle DOCX with Mammoth
-          const arrayBuffer = await file.arrayBuffer();
-          let result = await mammoth.extractRawText({ arrayBuffer });
-          extractedText = result.value;
+        const extractedText = await extractText(file);
+        const { counts, total, details } = countKLevels(extractedText);
 
-        } else if (file.name.endsWith(".pdf")) {
-          // Handle PDF with PDF.js
-          const arrayBuffer = await file.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-          let textContent = [];
-          for (let i = 1; i <= pdf.numPages; i++) {
-            let page = await pdf.getPage(i);
-            let txt = await page.getTextContent();
-            let pageText = txt.items.map(s => s.str).join(" ");
-            textContent.push(pageText);
-          }
-          extractedText = textContent.join("\n");
-
-        } else {
-          document.getElementById("status").innerText = "⚠️ Please upload a .docx or .pdf file only.";
-          return;
+        // Render
+        let html = "<h3>K-Level Counts</h3>";
+        for (const k of ["K1","K2","K3","K4","K5","K6"]) {
+          html += `<div class="k-count">${k}: ${counts[k]}</div>`;
         }
-
-        // Process text for K-levels
-        let kLevels = { K1: 0, K2: 0, K3: 0, K4: 0, K5: 0, K6: 0 };
-        let lines = extractedText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-
-        lines.forEach(line => {
-          if (line.includes("(o)") || line.includes("●")) {
-            let cols = line.split(/\s+/);
-            cols.forEach((col, idx) => {
-              if (col.includes("●")) {
-                let kName = "K" + (idx + 1);
-                if (kLevels[kName] !== undefined) {
-                  kLevels[kName]++;
-                }
-              }
-            });
-          }
-        });
-
-        // Show results
-        let output = "<h3>K-Level Counts:</h3>";
-        for (let k in kLevels) {
-          output += `<div class="k-count">${k}: ${kLevels[k]}</div>`;
-        }
-        let total = Object.values(kLevels).reduce((a,b)=>a+b,0);
-        output += `<div class="k-count"><b>Total: ${total}</b></div>`;
-
-        document.getElementById("results").innerHTML = output;
-        document.getElementById("status").innerText = "✅ Processing complete!";
+        html += `<div class="k-count"><b>Total: ${total}</b></div>`;
+        html += `<div class="muted">Parsed ${details.length} questions.</div>`;
+        setResults(html);
+        setStatus("✅ Done");
       } catch (err) {
-        document.getElementById("status").innerText = "❌ Error: " + err.message;
+        setStatus("❌ Error: " + err.message);
       }
+    }
+
+    function setStatus(msg) { document.getElementById("status").innerText = msg; }
+    function setResults(html) { document.getElementById("results").innerHTML = html; }
+
+    async function extractText(file) {
+      const name = file.name.toLowerCase();
+      const arrayBuffer = await file.arrayBuffer();
+
+      if (name.endsWith(".docx")) {
+        const res = await mammoth.extractRawText({ arrayBuffer });
+        return res.value || "";
+      }
+      if (name.endsWith(".pdf")) {
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pages = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const txt = await page.getTextContent();
+          // Join items preserving order
+          pages.push(txt.items.map(s => s.str).join("\n"));
+        }
+        return pages.join("\n");
+      }
+      throw new Error("Unsupported file type. Please upload .docx or .pdf");
+    }
+
+    // --------- KEY FIX: vertical layout parser ----------
+    function countKLevels(rawText) {
+      const counts = { K1:0, K2:0, K3:0, K4:0, K5:0, K6:0 };
+      const lines = rawText
+        .split(/\r?\n/)
+        .map(l => l.trim())
+        .filter(Boolean);
+
+      const isNumber = s => /^\d+$/.test(s);
+      const isMark = s => s.includes("●"); // filled circle like "(●)"; extend if needed
+
+      const details = []; // optional per-question info
+      for (let i = 0; i < lines.length; i++) {
+        if (isNumber(lines[i])) {
+          // Next 6 non-empty lines are the markers for K1..K6
+          const marks = [];
+          let j = i + 1;
+          while (j < lines.length && marks.length < 6) {
+            if (lines[j] !== "") marks.push(lines[j]);
+            j++;
+          }
+          if (marks.length === 6) {
+            let pickedIndex = marks.findIndex(isMark); // 0..5
+            if (pickedIndex >= 0) {
+              counts["K" + (pickedIndex + 1)]++;
+            }
+            details.push({ q: Number(lines[i]), pickedK: pickedIndex >= 0 ? ("K" + (pickedIndex + 1)) : null });
+            // advance pointer just before j-1 so loop continues from there naturally
+            i = j - 1;
+          }
+        }
+      }
+
+      const total = Object.values(counts).reduce((a,b)=>a+b,0);
+      return { counts, total, details };
     }
   </script>
 </body>
