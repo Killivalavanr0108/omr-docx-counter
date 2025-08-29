@@ -23,13 +23,17 @@
     input[type="file"] { margin-top: 10px; }
     #status { text-align: center; margin: 20px; font-weight: bold; color: #192a56; }
     #results {
-      background: #ffffff; padding: 20px; margin: 20px auto; width: 500px;
+      background: #ffffff; padding: 20px; margin: 20px auto; width: 600px;
       border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,.1);
     }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { border: 1px solid #dcdde1; padding: 8px; text-align: center; }
     th { background: #f1f2f6; }
     .muted { color:#57606a; font-size:12px; text-align:center; margin-top:10px; }
+    ul { list-style-type: none; padding: 0; }
+    ul li { margin: 5px 0; }
+    .answered { color: green; font-weight: bold; }
+    .unanswered { color: red; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -67,7 +71,18 @@
         html += `<tr><td><b>Total Answered</b></td><td><b>${total}</b></td></tr>`;
         html += `<tr><td><b>Unanswered</b></td><td><b>${unanswered}</b></td></tr>`;
         html += "</table>";
-        html += `<div class="muted">Parsed ${details.length} questions.</div>`;
+
+        // Question-wise details
+        html += "<h3>Question-wise Answers</h3><ul>";
+        details.forEach((d, idx) => {
+          if (d.pickedK) {
+            html += `<li>Q${idx+1}: <span class="answered">${d.pickedK}</span></li>`;
+          } else {
+            html += `<li>Q${idx+1}: <span class="unanswered">Unanswered ❌</span></li>`;
+          }
+        });
+        html += "</ul>";
+
         setResults(html);
         setStatus("✅ Done");
       } catch (err) {
