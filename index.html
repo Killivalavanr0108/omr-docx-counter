@@ -3,50 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <title>OMR DOCX/PDF K-Level Counter</title>
+  <!-- Mammoth.js for DOCX -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+  <!-- PDF.js for PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      background: #f5f6fa;
-    }
-    h1 {
-      text-align: center;
-      color: #2f3640;
-    }
+    body { font-family: Arial, sans-serif; margin: 40px; background: #f5f6fa; }
+    h1 { text-align: center; color: #2f3640; }
     .upload-box {
-      text-align: center;
-      margin: 20px auto;
-      padding: 30px;
-      border: 2px dashed #718093;
-      border-radius: 10px;
-      background: #dcdde1;
-      width: 400px;
+      text-align: center; margin: 20px auto; padding: 30px;
+      border: 2px dashed #718093; border-radius: 10px; background: #dcdde1; width: 400px;
     }
-    input[type="file"] {
-      margin-top: 10px;
-    }
-    #status {
-      text-align: center;
-      margin: 20px;
-      font-weight: bold;
-      color: #192a56;
-    }
-    #results {
-      background: #ffffff;
-      padding: 20px;
-      margin: 20px auto;
-      width: 400px;
-      border-radius: 8px;
-      box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-    }
-    .k-count {
-      margin: 5px 0;
-      font-size: 16px;
-      padding: 5px;
-      border-bottom: 1px solid #f1f2f6;
-    }
+    input[type="file"] { margin-top: 10px; }
+    #status { text-align: center; margin: 20px; font-weight: bold; color: #192a56; }
+    #results { background: #ffffff; padding: 20px; margin: 20px auto; width: 400px;
+      border-radius: 8px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
+    .k-count { margin: 5px 0; font-size: 16px; padding: 5px; border-bottom: 1px solid #f1f2f6; }
   </style>
 </head>
 <body>
@@ -74,16 +46,15 @@
 
       try {
         if (file.name.endsWith(".docx")) {
-          // DOCX handling
+          // Handle DOCX with Mammoth
           const arrayBuffer = await file.arrayBuffer();
           let result = await mammoth.extractRawText({ arrayBuffer });
           extractedText = result.value;
 
         } else if (file.name.endsWith(".pdf")) {
-          // PDF handling
+          // Handle PDF with PDF.js
           const arrayBuffer = await file.arrayBuffer();
           const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
           let textContent = [];
           for (let i = 1; i <= pdf.numPages; i++) {
             let page = await pdf.getPage(i);
@@ -92,14 +63,14 @@
             textContent.push(pageText);
           }
           extractedText = textContent.join("\n");
+
         } else {
           document.getElementById("status").innerText = "⚠️ Please upload a .docx or .pdf file only.";
           return;
         }
 
-        // Process extracted text
+        // Process text for K-levels
         let kLevels = { K1: 0, K2: 0, K3: 0, K4: 0, K5: 0, K6: 0 };
-
         let lines = extractedText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
         lines.forEach(line => {
@@ -116,7 +87,7 @@
           }
         });
 
-        // Display results
+        // Show results
         let output = "<h3>K-Level Counts:</h3>";
         for (let k in kLevels) {
           output += `<div class="k-count">${k}: ${kLevels[k]}</div>`;
