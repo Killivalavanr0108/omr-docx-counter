@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>OMR DOCX/PDF K-Level Counter (Fixed Parser)</title>
+  <title>OMR DOCX/PDF K-Level Counter</title>
   <!-- Mammoth.js for DOCX -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
   <!-- PDF.js for PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script>
-    // PDF.js needs the worker specified when used via CDN
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc =
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
@@ -24,11 +23,13 @@
     input[type="file"] { margin-top: 10px; }
     #status { text-align: center; margin: 20px; font-weight: bold; color: #192a56; }
     #results {
-      background: #ffffff; padding: 20px; margin: 20px auto; width: 460px;
+      background: #ffffff; padding: 20px; margin: 20px auto; width: 500px;
       border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,.1);
     }
-    .k-count { margin: 6px 0; font-size: 16px; padding: 6px; border-bottom: 1px solid #f1f2f6; }
-    .muted { color:#57606a; font-size:12px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #dcdde1; padding: 8px; text-align: center; }
+    th { background: #f1f2f6; }
+    .muted { color:#57606a; font-size:12px; text-align:center; margin-top:10px; }
   </style>
 </head>
 <body>
@@ -54,14 +55,17 @@
 
       try {
         const extractedText = await extractText(file);
-        const { counts, total, details } = countKLevels(extractedText);
+        const { counts, total, unanswered, details } = countKLevels(extractedText);
 
-        // Render
+        // Render results
         let html = "<h3>K-Level Counts</h3>";
+        html += "<table><tr><th>K-Level</th><th>Count</th></tr>";
         for (const k of ["K1","K2","K3","K4","K5","K6"]) {
-          html += `<div class="k-count">${k}: ${counts[k]}</div>`;
+          html += `<tr><td>${k}</td><td>${counts[k]}</td></tr>`;
         }
-        html += `<div class="k-count"><b>Total: ${total}</b></div>`;
+        html += `<tr><td><b>Total Answered</b></td><td><b>${total}</b></td></tr>`;
+        html += `<tr><td><b>Unanswered</b></td><td><b>${unanswered}</b></td></tr>`;
+        html += "</table>";
         html += `<div class="muted">Parsed ${details.length} questions.</div>`;
         setResults(html);
         setStatus("✅ Done");
@@ -83,33 +87,26 @@
       }
       if (name.endsWith(".pdf")) {
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        const pages = [];
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const txt = await page.getTextContent();
-          // Join items preserving order
-          pages.push(txt.items.map(s => s.str).join("\n"));
-        }
-        return pages.join("\n");
+        const pages = await Promise.all(
+          Array.from({ length: pdf.numPages }, (_, i) =>
+            pdf.getPage(i + 1).then(p => p.getTextContent())
+          )
+        );
+        return pages.map(txt => txt.items.map(s => s.str).join("\n")).join("\n");
       }
       throw new Error("Unsupported file type. Please upload .docx or .pdf");
     }
 
-    // --------- KEY FIX: vertical layout parser ----------
     function countKLevels(rawText) {
       const counts = { K1:0, K2:0, K3:0, K4:0, K5:0, K6:0 };
-      const lines = rawText
-        .split(/\r?\n/)
-        .map(l => l.trim())
-        .filter(Boolean);
+      const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
-      const isNumber = s => /^\d+$/.test(s);
-      const isMark = s => s.includes("●"); // filled circle like "(●)"; extend if needed
+      const isNumber = s => /^\d+[.)]?$/.test(s);
+      const isMark = s => /\(●\)|●|•|■|✓|x/i.test(s);
 
-      const details = []; // optional per-question info
+      const details = [];
       for (let i = 0; i < lines.length; i++) {
         if (isNumber(lines[i])) {
-          // Next 6 non-empty lines are the markers for K1..K6
           const marks = [];
           let j = i + 1;
           while (j < lines.length && marks.length < 6) {
@@ -117,19 +114,19 @@
             j++;
           }
           if (marks.length === 6) {
-            let pickedIndex = marks.findIndex(isMark); // 0..5
+            const pickedIndex = marks.findIndex(isMark);
             if (pickedIndex >= 0) {
-              counts["K" + (pickedIndex + 1)]++;
+              counts["K" + (pickedIndex+1)]++;
             }
-            details.push({ q: Number(lines[i]), pickedK: pickedIndex >= 0 ? ("K" + (pickedIndex + 1)) : null });
-            // advance pointer just before j-1 so loop continues from there naturally
+            details.push({ q: lines[i], pickedK: pickedIndex>=0 ? "K"+(pickedIndex+1) : null });
             i = j - 1;
           }
         }
       }
 
       const total = Object.values(counts).reduce((a,b)=>a+b,0);
-      return { counts, total, details };
+      const unanswered = details.filter(d => !d.pickedK).length;
+      return { counts, total, unanswered, details };
     }
   </script>
 </body>
