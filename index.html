@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>OMR DOCX K-Level Counter</title>
+  <title>OMR DOCX/PDF K-Level Counter</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -49,11 +50,11 @@
   </style>
 </head>
 <body>
-  <h1>OMR DOCX K-Level Counter</h1>
+  <h1>OMR DOCX/PDF K-Level Counter</h1>
 
   <div class="upload-box">
-    <p>Select a <b>.docx</b> file to process:</p>
-    <input type="file" id="fileInput" accept=".docx">
+    <p>Select a <b>.docx</b> or <b>.pdf</b> file to process:</p>
+    <input type="file" id="fileInput" accept=".docx,.pdf">
   </div>
 
   <div id="status"></div>
@@ -66,30 +67,44 @@
       const file = event.target.files[0];
       if (!file) return;
 
-      if (!file.name.endsWith(".docx")) {
-        document.getElementById("status").innerText = "⚠️ Please upload a .docx file only.";
-        return;
-      }
-
-      document.getElementById("status").innerText = "⏳ Processing DOCX...";
+      document.getElementById("status").innerText = "⏳ Processing file...";
       document.getElementById("results").innerHTML = "";
 
-      const arrayBuffer = await file.arrayBuffer();
+      let extractedText = "";
 
       try {
-        // Extract raw text from DOCX
-        let result = await mammoth.extractRawText({ arrayBuffer });
-        let extractedText = result.value;
+        if (file.name.endsWith(".docx")) {
+          // DOCX handling
+          const arrayBuffer = await file.arrayBuffer();
+          let result = await mammoth.extractRawText({ arrayBuffer });
+          extractedText = result.value;
 
+        } else if (file.name.endsWith(".pdf")) {
+          // PDF handling
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+          let textContent = [];
+          for (let i = 1; i <= pdf.numPages; i++) {
+            let page = await pdf.getPage(i);
+            let txt = await page.getTextContent();
+            let pageText = txt.items.map(s => s.str).join(" ");
+            textContent.push(pageText);
+          }
+          extractedText = textContent.join("\n");
+        } else {
+          document.getElementById("status").innerText = "⚠️ Please upload a .docx or .pdf file only.";
+          return;
+        }
+
+        // Process extracted text
         let kLevels = { K1: 0, K2: 0, K3: 0, K4: 0, K5: 0, K6: 0 };
 
-        // Split into lines
         let lines = extractedText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
-        // Process each row containing (o) or (●)
         lines.forEach(line => {
           if (line.includes("(o)") || line.includes("●")) {
-            let cols = line.split(/\s+/); // split into columns by whitespace
+            let cols = line.split(/\s+/);
             cols.forEach((col, idx) => {
               if (col.includes("●")) {
                 let kName = "K" + (idx + 1);
