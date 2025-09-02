@@ -88,9 +88,9 @@
         for (const k of ["K1","K2","K3","K4","K5","K6"]) {
           html += `<tr><td>${k}</td><td>${counts[k]}</td></tr>`;
         }
-        html += `<tr><td><b>Total Questions</b></td><td><b>${details.length}</b></td></tr>`;
         html += `<tr><td><b>Total Answered</b></td><td><b>${total}</b></td></tr>`;
-        html += `<tr><td><b>Unanswered</b></td><td><b>${unanswered}</b></td></tr>`;
+        html += `<tr><td><b>Total Unanswered</b></td><td><b>${unanswered}</b></td></tr>`;
+        html += `<tr><td><b>Total Questions</b></td><td><b>${details.length}</b></td></tr>`;
         html += "</table>";
 
         // Question-wise details
