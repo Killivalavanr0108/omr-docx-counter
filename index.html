@@ -12,7 +12,7 @@
       display: flex; align-items: center; justify-content: center;
       background: #b3daff; padding: 15px; border-radius: 10px; margin-bottom: 20px;
     }
-    .college-header img { height: 80px; margin-right: 20px; }
+    .college-header img { height: 80px; margin-right: 20px; border-radius: 8px; }
     .college-header h2 { margin: 0; color: #003366; }
     .upload-box {
       text-align: center; margin: 20px auto; padding: 30px;
@@ -40,13 +40,12 @@
 </head>
 <body>
   <div class="college-header">
-  <!-- Use uploaded logo -->
-  <img src="college_token.avif" alt="College Logo">
-  <div>
-    <h2>Government Arts College, Nandanam, Chennai-35</h2>
+    <!-- College Logo -->
+    <img src="college_token.avif" alt="College Logo">
+    <div>
+      <h2>Government Arts College, Nandanam, Chennai-35</h2>
+    </div>
   </div>
-</div>
-
 
   <h1>OMR DOCX K-Level Counter</h1>
 
@@ -72,12 +71,13 @@
 
       try {
         const extractedText = await extractText(file);
-        const { className, regNo } = extractStudentInfo(extractedText);
+        const { className, subjectCode, regNo } = extractStudentInfo(extractedText);
         const { counts, total, unanswered, details } = countKLevels(extractedText);
 
         // Student info section
         let studentHtml = "<h3>Student Information</h3><table>";
         studentHtml += `<tr><td><b>Class</b></td><td>${className || "Not Found"}</td></tr>`;
+        studentHtml += `<tr><td><b>Subject Code</b></td><td>${subjectCode || "Not Found"}</td></tr>`;
         studentHtml += `<tr><td><b>Register No</b></td><td>${regNo || "Not Found"}</td></tr>`;
         studentHtml += "</table>";
         setStudentInfo(studentHtml);
@@ -122,12 +122,15 @@
     }
 
     function extractStudentInfo(text) {
-      // Looks for lines like "Class: XYZ" or "Register No: 12345"
-      const classMatch = text.match(/Class[:\- ]+([A-Za-z0-9 ]+)/i);
-      const regMatch = text.match(/Reg(ister)?\.?\s*No[:\- ]+([A-Za-z0-9]+)/i);
+      // Matches Class, Subject Code, and Register No.
+      const classMatch = text.match(/Class[:\- ]+([A-Za-z0-9. ]+)/i);
+      const subjectMatch = text.match(/Subject\s*Code[:\- ]+([A-Za-z0-9]+)/i);
+      const regMatch = text.match(/Register\s*No[:.\- ]+([A-Za-z0-9]+)/i);
+
       return {
         className: classMatch ? classMatch[1].trim() : null,
-        regNo: regMatch ? regMatch[2].trim() : null
+        subjectCode: subjectMatch ? subjectMatch[1].trim() : null,
+        regNo: regMatch ? regMatch[1].trim() : null
       };
     }
 
