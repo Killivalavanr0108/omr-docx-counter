@@ -5,65 +5,41 @@
   <title>OMR DOCX K-Level Counter</title>
   <!-- Mammoth.js for DOCX -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+    }
+  </script>
   <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      margin: 40px; 
-      background: #e6f2ff; /* Light blue background */
-    }
-    h1 { 
-      text-align: center; 
-      color: #003366; /* Dark navy blue */
-    }
+    body { font-family: Arial, sans-serif; margin: 40px; background: #e6f4ff; }
+    h1 { text-align: center; color: #003366; }
     .upload-box {
-      text-align: center; 
-      margin: 20px auto; 
-      padding: 30px;
-      border: 2px dashed #3366cc; 
-      border-radius: 10px; 
-      background: #cce0ff; /* Light blue box */
-      width: 460px;
+      text-align: center; margin: 20px auto; padding: 30px;
+      border: 2px dashed #3399ff; border-radius: 10px; background: #cce6ff; width: 460px;
     }
     input[type="file"] { margin-top: 10px; }
-    #status { 
-      text-align: center; 
-      margin: 20px; 
-      font-weight: bold; 
-      color: #003366; 
-    }
+    #status { text-align: center; margin: 20px; font-weight: bold; color: #003366; }
     #results {
-      background: #ffffff; 
-      padding: 20px; 
-      margin: 20px auto; 
-      width: 700px;
-      border-radius: 8px; 
-      box-shadow: 0 4px 10px rgba(0,0,0,.1);
-      border: 1px solid #99c2ff;
+      background: #ffffff; padding: 20px; margin: 20px auto; width: 600px;
+      border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,.1);
     }
-    table { 
-      width: 100%; 
-      border-collapse: collapse; 
-      margin-top: 10px; 
-    }
-    th, td { 
-      border: 1px solid #b3d1ff; 
-      padding: 8px; 
-      text-align: center; 
-    }
-    th { 
-      background: #d9ebff; 
-      color: #003366; 
-    }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #99ccff; padding: 8px; text-align: center; }
+    th { background: #b3daff; }
+    td { font-weight: bold; }
+    ul { list-style-type: none; padding: 0; }
+    ul li { margin: 5px 0; }
     .answered { color: green; font-weight: bold; }
     .unanswered { color: red; font-weight: bold; }
   </style>
 </head>
 <body>
-  <h1>OMR DOCX K-Level Counter</h1>
+  <h1>OMR DOCX/PDF K-Level Counter</h1>
 
   <div class="upload-box">
-    <p>Select a <b>.docx</b> file to process:</p>
-    <input type="file" id="fileInput" accept=".docx">
+    <p>Select a <b>.docx</b> or <b>.pdf</b> file to process:</p>
+    <input type="file" id="fileInput" accept=".docx,.pdf">
   </div>
 
   <div id="status"></div>
@@ -89,22 +65,21 @@
         for (const k of ["K1","K2","K3","K4","K5","K6"]) {
           html += `<tr><td>${k}</td><td>${counts[k]}</td></tr>`;
         }
+        html += `<tr><td><b>Total Questions</b></td><td><b>${details.length}</b></td></tr>`;
         html += `<tr><td><b>Total Answered</b></td><td><b>${total}</b></td></tr>`;
         html += `<tr><td><b>Unanswered</b></td><td><b>${unanswered}</b></td></tr>`;
-        html += `<tr><td><b>Total Questions</b></td><td><b>${details.length}</b></td></tr>`;
         html += "</table>";
 
-        // Question-wise details (in table format)
-        html += "<h3>Question-wise Answers</h3>";
-        html += "<table><tr><th>Question</th><th>Selected Answer</th></tr>";
+        // Question-wise details
+        html += "<h3>Question-wise Answers</h3><ul>";
         details.forEach((d, idx) => {
           if (d.pickedK) {
-            html += `<tr><td>Q${idx+1}</td><td class="answered">${d.pickedK}</td></tr>`;
+            html += `<li>Q${idx+1}: <span class="answered">${d.pickedK}</span></li>`;
           } else {
-            html += `<tr><td>Q${idx+1}</td><td class="unanswered">Unanswered ❌</td></tr>`;
+            html += `<li>Q${idx+1}: <span class="unanswered">Unanswered ❌</span></li>`;
           }
         });
-        html += "</table>";
+        html += "</ul>";
 
         setResults(html);
         setStatus("✅ Done");
@@ -117,9 +92,23 @@
     function setResults(html) { document.getElementById("results").innerHTML = html; }
 
     async function extractText(file) {
+      const name = file.name.toLowerCase();
       const arrayBuffer = await file.arrayBuffer();
-      const res = await mammoth.extractRawText({ arrayBuffer });
-      return res.value || "";
+
+      if (name.endsWith(".docx")) {
+        const res = await mammoth.extractRawText({ arrayBuffer });
+        return res.value || "";
+      }
+      if (name.endsWith(".pdf")) {
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pages = await Promise.all(
+          Array.from({ length: pdf.numPages }, (_, i) =>
+            pdf.getPage(i + 1).then(p => p.getTextContent())
+          )
+        );
+        return pages.map(txt => txt.items.map(s => s.str).join("\n")).join("\n");
+      }
+      throw new Error("Unsupported file type. Please upload .docx or .pdf");
     }
 
     function countKLevels(rawText) {
