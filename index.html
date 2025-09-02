@@ -8,12 +8,22 @@
   <style>
     body { font-family: Arial, sans-serif; margin: 40px; background: #e6f4ff; }
     h1 { text-align: center; color: #003366; }
+    .college-header {
+      display: flex; align-items: center; justify-content: center;
+      background: #b3daff; padding: 15px; border-radius: 10px; margin-bottom: 20px;
+    }
+    .college-header img { height: 80px; margin-right: 20px; }
+    .college-header h2 { margin: 0; color: #003366; }
     .upload-box {
       text-align: center; margin: 20px auto; padding: 30px;
       border: 2px dashed #3399ff; border-radius: 10px; background: #cce6ff; width: 460px;
     }
     input[type="file"] { margin-top: 10px; }
     #status { text-align: center; margin: 20px; font-weight: bold; color: #003366; }
+    #student-info {
+      background: #ffffff; padding: 15px; margin: 20px auto; width: 600px;
+      border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,.1); font-size: 16px;
+    }
     #results {
       background: #ffffff; padding: 20px; margin: 20px auto; width: 600px;
       border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,.1);
@@ -29,6 +39,12 @@
   </style>
 </head>
 <body>
+  <div class="college-header">
+    <!-- Replace logo.png with your college logo -->
+    <img src="logo.png" alt="College Logo">
+    <h2>My College Name</h2>
+  </div>
+
   <h1>OMR DOCX K-Level Counter</h1>
 
   <div class="upload-box">
@@ -37,6 +53,7 @@
   </div>
 
   <div id="status"></div>
+  <div id="student-info"></div>
   <div id="results"></div>
 
   <script>
@@ -48,10 +65,19 @@
 
       setStatus("⏳ Processing file...");
       setResults("");
+      setStudentInfo("");
 
       try {
         const extractedText = await extractText(file);
+        const { className, regNo } = extractStudentInfo(extractedText);
         const { counts, total, unanswered, details } = countKLevels(extractedText);
+
+        // Student info section
+        let studentHtml = "<h3>Student Information</h3><table>";
+        studentHtml += `<tr><td><b>Class</b></td><td>${className || "Not Found"}</td></tr>`;
+        studentHtml += `<tr><td><b>Register No</b></td><td>${regNo || "Not Found"}</td></tr>`;
+        studentHtml += "</table>";
+        setStudentInfo(studentHtml);
 
         // Render results
         let html = "<h3>K-Level Counts</h3>";
@@ -59,9 +85,9 @@
         for (const k of ["K1","K2","K3","K4","K5","K6"]) {
           html += `<tr><td>${k}</td><td>${counts[k]}</td></tr>`;
         }
-        html += `<tr><td><b>Total Answered</b></td><td><b>${total}</b></td></tr>`;
-        html += `<tr><td><b> Total Unanswered</b></td><td><b>${unanswered}</b></td></tr>`;
         html += `<tr><td><b>Total Questions</b></td><td><b>${details.length}</b></td></tr>`;
+        html += `<tr><td><b>Total Answered</b></td><td><b>${total}</b></td></tr>`;
+        html += `<tr><td><b>Unanswered</b></td><td><b>${unanswered}</b></td></tr>`;
         html += "</table>";
 
         // Question-wise details
@@ -84,11 +110,22 @@
 
     function setStatus(msg) { document.getElementById("status").innerText = msg; }
     function setResults(html) { document.getElementById("results").innerHTML = html; }
+    function setStudentInfo(html) { document.getElementById("student-info").innerHTML = html; }
 
     async function extractText(file) {
       const arrayBuffer = await file.arrayBuffer();
       const res = await mammoth.extractRawText({ arrayBuffer });
       return res.value || "";
+    }
+
+    function extractStudentInfo(text) {
+      // Looks for lines like "Class: XYZ" or "Register No: 12345"
+      const classMatch = text.match(/Class[:\- ]+([A-Za-z0-9 ]+)/i);
+      const regMatch = text.match(/Reg(ister)?\.?\s*No[:\- ]+([A-Za-z0-9]+)/i);
+      return {
+        className: classMatch ? classMatch[1].trim() : null,
+        regNo: regMatch ? regMatch[2].trim() : null
+      };
     }
 
     function countKLevels(rawText) {
