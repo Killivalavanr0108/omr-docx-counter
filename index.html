@@ -122,14 +122,15 @@
     }
 
     function extractStudentInfo(text) {
-      // Matches Class, Subject Code, and Register No.
-      const classMatch = text.match(/Class[:\- ]+([A-Za-z0-9. ]+)/i);
-      const subjectMatch = text.match(/Subject\s*Code[:\- ]+([A-Za-z0-9]+)/i);
+      // Match "Class ... Subject Code ..." on same line
+      const classLine = text.match(/Class[:\- ]*([A-Za-z0-9. ]+)\s+Subject\s*Code[:\- ]*([A-Za-z0-9]+)/i);
+
+      // Match Register No
       const regMatch = text.match(/Register\s*No[:.\- ]+([A-Za-z0-9]+)/i);
 
       return {
-        className: classMatch ? classMatch[1].trim() : null,
-        subjectCode: subjectMatch ? subjectMatch[1].trim() : null,
+        className: classLine ? classLine[1].trim() : null,
+        subjectCode: classLine ? classLine[2].trim() : null,
         regNo: regMatch ? regMatch[1].trim() : null
       };
     }
