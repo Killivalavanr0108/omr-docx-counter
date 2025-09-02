@@ -35,7 +35,7 @@
       background: #ffffff; 
       padding: 20px; 
       margin: 20px auto; 
-      width: 600px;
+      width: 700px;
       border-radius: 8px; 
       box-shadow: 0 4px 10px rgba(0,0,0,.1);
       border: 1px solid #99c2ff;
@@ -54,8 +54,6 @@
       background: #d9ebff; 
       color: #003366; 
     }
-    ul { list-style-type: none; padding: 0; }
-    ul li { margin: 5px 0; }
     .answered { color: green; font-weight: bold; }
     .unanswered { color: red; font-weight: bold; }
   </style>
@@ -96,16 +94,17 @@
         html += `<tr><td><b>Total Questions</b></td><td><b>${details.length}</b></td></tr>`;
         html += "</table>";
 
-        // Question-wise details
-        html += "<h3>Question-wise Answers</h3><ul>";
+        // Question-wise details (in table format)
+        html += "<h3>Question-wise Answers</h3>";
+        html += "<table><tr><th>Question</th><th>Selected Answer</th></tr>";
         details.forEach((d, idx) => {
           if (d.pickedK) {
-            html += `<li>Q${idx+1}: <span class="answered">${d.pickedK}</span></li>`;
+            html += `<tr><td>Q${idx+1}</td><td class="answered">${d.pickedK}</td></tr>`;
           } else {
-            html += `<li>Q${idx+1}: <span class="unanswered">Unanswered ❌</span></li>`;
+            html += `<tr><td>Q${idx+1}</td><td class="unanswered">Unanswered ❌</td></tr>`;
           }
         });
-        html += "</ul>";
+        html += "</table>";
 
         setResults(html);
         setStatus("✅ Done");
