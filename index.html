@@ -9,11 +9,11 @@
     body { 
       font-family: Arial, sans-serif; 
       margin: 40px; 
-      background: #e6f2ff; /* Light blue */
+      background: #e6f2ff; /* Light blue background */
     }
     h1 { 
       text-align: center; 
-      color: #003366; 
+      color: #003366; /* Dark navy blue */
     }
     .upload-box {
       text-align: center; 
@@ -21,7 +21,7 @@
       padding: 30px;
       border: 2px dashed #3366cc; 
       border-radius: 10px; 
-      background: #cce0ff; 
+      background: #cce0ff; /* Light blue box */
       width: 460px;
     }
     input[type="file"] { margin-top: 10px; }
@@ -35,7 +35,7 @@
       background: #ffffff; 
       padding: 20px; 
       margin: 20px auto; 
-      width: 650px;
+      width: 600px;
       border-radius: 8px; 
       box-shadow: 0 4px 10px rgba(0,0,0,.1);
       border: 1px solid #99c2ff;
@@ -54,7 +54,6 @@
       background: #d9ebff; 
       color: #003366; 
     }
-    tr:nth-child(even) { background: #f2f9ff; }
     ul { list-style-type: none; padding: 0; }
     ul li { margin: 5px 0; }
     .answered { color: green; font-weight: bold; }
@@ -99,11 +98,11 @@
 
         // Question-wise details
         html += "<h3>Question-wise Answers</h3><ul>";
-        details.forEach((d) => {
+        details.forEach((d, idx) => {
           if (d.pickedK) {
-            html += `<li>Q${d.q}: <span class="answered">${d.pickedK}</span></li>`;
+            html += `<li>Q${idx+1}: <span class="answered">${d.pickedK}</span></li>`;
           } else {
-            html += `<li>Q${d.q}: <span class="unanswered">Unanswered ❌</span></li>`;
+            html += `<li>Q${idx+1}: <span class="unanswered">Unanswered ❌</span></li>`;
           }
         });
         html += "</ul>";
@@ -118,40 +117,41 @@
     function setStatus(msg) { document.getElementById("status").innerText = msg; }
     function setResults(html) { document.getElementById("results").innerHTML = html; }
 
-    // Extract DOCX text only
     async function extractText(file) {
       const arrayBuffer = await file.arrayBuffer();
       const res = await mammoth.extractRawText({ arrayBuffer });
       return res.value || "";
     }
 
-    // Row-based parser
     function countKLevels(rawText) {
       const counts = { K1:0, K2:0, K3:0, K4:0, K5:0, K6:0 };
-      const details = [];
-
       const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      const rowPattern = /^(\d+)\s+\((.)\)\s+\((.)\)\s+\((.)\)\s+\((.)\)\s+\((.)\)\s+\((.)\)$/;
 
-      for (let line of lines) {
-        const match = line.match(rowPattern);
-        if (match) {
-          const qNo = match[1];
-          const options = match.slice(2);
+      const isNumber = s => /^\d+[.)]?$/.test(s);
+      const isMark = s => /\(●\)|●|•|■|✓|x/i.test(s);
 
-          const pickedIndex = options.findIndex(opt => opt.includes("●"));
-          if (pickedIndex >= 0) {
-            counts["K" + (pickedIndex + 1)]++;
-            details.push({ q: qNo, pickedK: "K" + (pickedIndex + 1) });
-          } else {
-            details.push({ q: qNo, pickedK: null });
+      const details = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (isNumber(lines[i])) {
+          const marks = [];
+          let j = i + 1;
+          while (j < lines.length && marks.length < 6) {
+            if (lines[j] !== "") marks.push(lines[j]);
+            j++;
+          }
+          if (marks.length === 6) {
+            const pickedIndex = marks.findIndex(isMark);
+            if (pickedIndex >= 0) {
+              counts["K" + (pickedIndex+1)]++;
+            }
+            details.push({ q: lines[i], pickedK: pickedIndex>=0 ? "K"+(pickedIndex+1) : null });
+            i = j - 1;
           }
         }
       }
 
       const total = Object.values(counts).reduce((a,b)=>a+b,0);
       const unanswered = details.filter(d => !d.pickedK).length;
-
       return { counts, total, unanswered, details };
     }
   </script>
