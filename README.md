@@ -9,3 +9,4 @@ A simple tool that counts **K1–K6 answers** in `.docx` OMR sheets.
 
 ## 🖥️ Local Run
 Just double-click `index.html` and open it in Chrome/Edge/Firefox.
+Example:Download k_level.docx use this Formet file.
