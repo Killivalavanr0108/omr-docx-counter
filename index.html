@@ -125,22 +125,25 @@
 
     function extractStudentInfo(text) {
       // Match Student Name (e.g., "Student Name: John Doe")
-      const nameMatch = text.match(/Student\s*Name[:.\- ]+([A-Za-z ]+)/i);
+      const nameMatch = text.match(/Student\s*Name[:.\- ]+([A-Za-z .]+)/i);
 
-      // Match Subject Name (e.g., "Subject Name: Physics")
-      const subjNameMatch = text.match(/Subject\s*Name[:.\- ]+([A-Za-z ]+)/i);
+      // Match Class (standalone line)
+      const classMatch = text.match(/Class[:.\- ]+([A-Za-z0-9. ]+)/i);
 
-      // Match Class & Subject Code
-      const classLine = text.match(/Class[:\- ]*([A-Za-z0-9. ]+)\s+Subject\s*Code[:\- ]*([A-Za-z0-9]+)/i);
+      // Match Subject Name
+      const subjNameMatch = text.match(/Subject\s*Name[:.\- ]+([A-Za-z0-9 .]+)/i);
+
+      // Match Subject Code (standalone line)
+      const subjCodeMatch = text.match(/Subject\s*Code[:.\- ]+([A-Za-z0-9]+)/i);
 
       // Match Register No
       const regMatch = text.match(/Register\s*No[:.\- ]+([A-Za-z0-9]+)/i);
 
       return {
         studentName: nameMatch ? nameMatch[1].trim() : null,
+        className: classMatch ? classMatch[1].trim() : null,
         subjectName: subjNameMatch ? subjNameMatch[1].trim() : null,
-        className: classLine ? classLine[1].trim() : null,
-        subjectCode: classLine ? classLine[2].trim() : null,
+        subjectCode: subjCodeMatch ? subjCodeMatch[1].trim() : null,
         regNo: regMatch ? regMatch[1].trim() : null
       };
     }
