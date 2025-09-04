@@ -75,10 +75,10 @@
 
         let studentHtml = "<h3>Student Information</h3><table>";
         studentHtml += `<tr><td><b>Student Name</b></td><td>${studentName || "Not Found"}</td></tr>`;
+        studentHtml += `<tr><td><b>Register No</b></td><td>${regNo || "Not Found"}</td></tr>`;
         studentHtml += `<tr><td><b>Department</b></td><td>${department || "Not Found"}</td></tr>`;
         studentHtml += `<tr><td><b>Subject Name</b></td><td>${subjectName || "Not Found"}</td></tr>`;
         studentHtml += `<tr><td><b>Subject Code</b></td><td>${subjectCode || "Not Found"}</td></tr>`;
-        studentHtml += `<tr><td><b>Register No</b></td><td>${regNo || "Not Found"}</td></tr>`;
         studentHtml += "</table>";
         setStudentInfo(studentHtml);
 
