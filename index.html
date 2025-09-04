@@ -77,10 +77,10 @@
         // Student info section
         let studentHtml = "<h3>Student Information</h3><table>";
         studentHtml += `<tr><td><b>Student Name</b></td><td>${studentName || "Not Found"}</td></tr>`;
+        studentHtml += `<tr><td><b>Register No</b></td><td>${regNo || "Not Found"}</td></tr>`;
         studentHtml += `<tr><td><b>Class</b></td><td>${className || "Not Found"}</td></tr>`;
         studentHtml += `<tr><td><b>Subject Name</b></td><td>${subjectName || "Not Found"}</td></tr>`;
         studentHtml += `<tr><td><b>Subject Code</b></td><td>${subjectCode || "Not Found"}</td></tr>`;
-        studentHtml += `<tr><td><b>Register No</b></td><td>${regNo || "Not Found"}</td></tr>`;
         studentHtml += "</table>";
         setStudentInfo(studentHtml);
 
@@ -91,7 +91,7 @@
           html += `<tr><td>${k}</td><td>${counts[k]}</td></tr>`;
         }
         html += `<tr><td><b>Total Answered</b></td><td><b>${total}</b></td></tr>`;
-        html += `<tr><td><b>Total Unanswered</b></td><td><b>${unanswered}</b></td></tr>`;
+        html += `<tr><td><b>  Total Unanswered</b></td><td><b>${unanswered}</b></td></tr>`;
         html += `<tr><td><b>Total Questions</b></td><td><b>${details.length}</b></td></tr>`;
         html += "</table>";
 
